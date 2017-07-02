@@ -72,7 +72,8 @@ class SQLExecutor extends AbstractExecutor
                     throw new \InvalidArgumentException('Sql Executor does not support setting references for attribute ' . $reference['attribute']);
             }
 
-            $this->referenceResolver->addReference($reference['identifier'], $value);
+            $overwrite = isset($reference['overwrite']) ? $reference['overwrite'] : false;
+            $this->referenceResolver->addReference($reference['identifier'], $value, $overwrite);
         }
     }
 }

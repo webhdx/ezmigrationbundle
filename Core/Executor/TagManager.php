@@ -128,7 +128,8 @@ class TagManager extends RepositoryExecutor
                     throw new \InvalidArgumentException('Tag Manager does not support setting references for attribute ' . $reference['attribute']);
             }
 
-            $this->referenceResolver->addReference($reference['identifier'], $value);
+            $overwrite = isset($reference['overwrite']) ? $reference['overwrite'] : false;
+            $this->referenceResolver->addReference($reference['identifier'], $value, $overwrite);
         }
 
         return true;

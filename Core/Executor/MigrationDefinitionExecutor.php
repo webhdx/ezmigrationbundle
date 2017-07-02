@@ -101,7 +101,8 @@ class MigrationDefinitionExecutor extends AbstractExecutor
             }
 
             $value = JmesPath::search($reference['json_path'], $result);
-            $this->referenceResolver->addReference($reference['identifier'], $value);
+            $overwrite = isset($reference['overwrite']) ? $reference['overwrite'] : false;
+            $this->referenceResolver->addReference($reference['identifier'], $value, $overwrite);
         }
     }
 

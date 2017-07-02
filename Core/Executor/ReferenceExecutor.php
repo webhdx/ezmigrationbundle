@@ -57,7 +57,7 @@ class ReferenceExecutor extends AbstractExecutor
         if (preg_match('/%.+%$/', $value)) {
             $value = $this->container->getParameter(trim($value, '%'));
         }
-        $overwrite = isset($dsl['overwrite']) ? $overwrite = $dsl['overwrite'] : false;
+        $overwrite = isset($dsl['overwrite']) ? $dsl['overwrite'] : false;
         $this->referenceResolver->addReference($dsl['identifier'], $value, $overwrite);
 
         return $value;
