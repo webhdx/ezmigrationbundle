@@ -5,6 +5,7 @@ namespace Kaliop\eZMigrationBundle\Core\Executor;
 use eZ\Publish\API\Repository\Values\User\Role;
 use eZ\Publish\API\Repository\RoleService;
 use eZ\Publish\API\Repository\UserService;
+use eZ\Publish\API\Repository\Values\User\RoleAssignment;
 use Kaliop\eZMigrationBundle\API\Collection\RoleCollection;
 use Kaliop\eZMigrationBundle\API\MigrationGeneratorInterface;
 use Kaliop\eZMigrationBundle\API\EnumerableMatcherInterface;
@@ -90,13 +91,14 @@ class RoleManager extends RepositoryExecutor implements MigrationGeneratorInterf
 
         /** @var \eZ\Publish\API\Repository\Values\User\Role $role */
         foreach ($roleCollection as $key => $role) {
+            $roleDraft = $roleService->createRoleDraft($role);
 
             // Updating role name
             if (isset($step->dsl['new_name'])) {
                 $update = $roleService->newRoleUpdateStruct();
                 $newRoleName = $this->referenceResolver->resolveReference($step->dsl['new_name']);
                 $update->identifier = $this->referenceResolver->resolveReference($newRoleName);
-                $role = $roleService->updateRole($role, $update);
+                $roleService->updateRoleDraft($roleDraft, $update);
             }
 
             if (isset($step->dsl['policies'])) {
@@ -106,7 +108,7 @@ class RoleManager extends RepositoryExecutor implements MigrationGeneratorInterf
                 // TODO: Check and update policies instead of remove and add.
                 $policies = $role->getPolicies();
                 foreach ($policies as $policy) {
-                    $roleService->deletePolicy($policy);
+                    $roleService->removePolicyByRoleDraft($roleDraft, $policy);
                 }
 
                 foreach ($ymlPolicies as $ymlPolicy) {
@@ -121,6 +123,8 @@ class RoleManager extends RepositoryExecutor implements MigrationGeneratorInterf
             if (isset($step->dsl['unassign'])) {
                 $this->unassignRole($role, $roleService, $userService, $step->dsl['unassign']);
             }
+
+            $roleService->publishRoleDraft($roleDraft);
 
             $roleCollection[$key] = $role;
         }
@@ -401,7 +405,13 @@ class RoleManager extends RepositoryExecutor implements MigrationGeneratorInterf
                         $groupId = $this->referenceResolver->resolveReference($groupId);
 
                         $group = $userService->loadUserGroup($groupId);
-                        $roleService->unassignRoleFromUserGroup($role, $group);
+                        $roleAssignments = $roleService->getRoleAssignmentsForUserGroup($group);
+                        $matchingRoleAssignments = array_filter($roleAssignments, static public function(RoleAssignment $assignment) use ($role) {
+                            return $role->id === $assignment->getRole()->id;
+                        });
+                        $roleAssignment = reset($matchingRoleAssignments);
+
+                        $roleService->removeRoleAssignment($roleAssignment);
                     }
                     break;
                 default:
@@ -419,6 +429,7 @@ class RoleManager extends RepositoryExecutor implements MigrationGeneratorInterf
      */
     protected function addPolicy(Role $role, RoleService $roleService, array $policy)
     {
+        $roleDraft = $roleService->createRoleDraft($role);
         $policyCreateStruct = $roleService->newPolicyCreateStruct($policy['module'], $policy['function']);
 
         if (array_key_exists('limitations', $policy)) {
@@ -428,6 +439,6 @@ class RoleManager extends RepositoryExecutor implements MigrationGeneratorInterf
             }
         }
 
-        $roleService->addPolicy($role, $policyCreateStruct);
+        $roleService->addPolicyByRoleDraft($roleDraft, $policyCreateStruct);
     }
 }
